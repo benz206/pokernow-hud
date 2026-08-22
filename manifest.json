@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "PokerNow HUD",
+  "version": "1.0.0",
+  "description": "Live equity, outs and pot odds shown directly on the PokerNow table.",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.pokernow.club/*",
+        "https://pokernow.club/*",
+        "https://www.pokernow.com/*",
+        "https://pokernow.com/*"
+      ],
+      "js": [
+        "src/poker/advice.js",
+        "src/content/parser.js",
+        "src/content/overlay.js",
+        "src/content/index.js"
+      ],
+      "css": [
+        "src/content/overlay.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

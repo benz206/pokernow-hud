@@ -1,0 +1,12 @@
+{
+  "name": "pokernow-hud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chrome extension: live poker odds overlaid on the PokerNow table.",
+  "scripts": {
+    "test": "node test/crosscheck.mjs && node test/exact.mjs && node test/advice.test.mjs && node test/variants.test.mjs && node test/state.test.mjs && node test/parser.test.mjs && node test/interaction.test.mjs && node test/autoplay.test.mjs && node test/e2e.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^27.0.0"
+  }
+}
