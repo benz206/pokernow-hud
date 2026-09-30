@@ -81,3 +81,4 @@ E.CATEGORY_NAMES.forEach((n, i) => {
   const got = (catHist[i] / N) * 100;
   console.log('  ' + n.padEnd(17), got.toFixed(3).padStart(7) + '%', 'vs', pub[i].toFixed(3).padStart(7) + '%');
 });
+if (scoreMismatch || orderMismatch) process.exitCode = 1;

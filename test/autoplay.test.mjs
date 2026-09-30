@@ -8,7 +8,7 @@ catch { ({ JSDOM } = require(process.env.JSDOM_PATH)); }
 const read = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
 
 const TABLE = `
-<div class="table-cards"></div>
+<div class="table-cards"><div class="card">A♣</div><div class="card">A♦</div><div class="card">9♠</div><div class="card">8♥</div><div class="card">7♦</div></div>
 <div class="table-player you-player"><div class="table-player-cards">
   <div class="card"><div class="value">A</div><div class="suit">&#9824;</div></div>
   <div class="card"><div class="value">A</div><div class="suit">&#9829;</div></div>
@@ -36,12 +36,12 @@ async function boot(html) {
   const { window } = dom;
   globalThis.PokerEval = require('../src/poker/evaluator.js');
   const Equity = require('../src/poker/equity.js');
-  const stored = {};
+  const stored = {pnhud: {ranges: {'seat:2': {mode: 'random', continuing: 'KK'}}}};
   window.chrome = {
     storage: { local: { get: (_k, cb) => cb(stored), set: (v) => Object.assign(stored, v) } },
     runtime: { id: 'test-extension', lastError: undefined, sendMessage: (m, cb) => cb(Equity.analyze(m.payload)) },
   };
-  for (const f of ['../src/poker/advice.js', '../src/content/parser.js',
+  for (const f of ['../src/poker/ranges.js', '../src/poker/history.js', '../src/poker/advice.js', '../src/content/parser.js',
                    '../src/content/overlay.js', '../src/content/index.js']) window.eval(read(f));
 
   const clicks = [];

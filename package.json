@@ -1,10 +1,10 @@
 {
   "name": "pokernow-hud",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Chrome extension: live poker odds overlaid on the PokerNow table.",
+  "description": "PokerNow coaching: explain actions, inspect range assumptions, and review your decisions.",
   "scripts": {
-    "test": "node test/crosscheck.mjs && node test/exact.mjs && node test/advice.test.mjs && node test/variants.test.mjs && node test/state.test.mjs && node test/parser.test.mjs && node test/interaction.test.mjs && node test/autoplay.test.mjs && node test/e2e.test.mjs"
+    "test": "node test/crosscheck.mjs && node test/exact.mjs && node test/equity.test.mjs && node test/advice.test.mjs && node test/history.test.mjs && node test/variants.test.mjs && node test/state.test.mjs && node test/parser.test.mjs && node test/interaction.test.mjs && node test/regressions.test.mjs && node test/coaching.test.mjs && node test/autoplay.test.mjs && node test/e2e.test.mjs"
   },
   "devDependencies": {
     "jsdom": "^27.0.0"

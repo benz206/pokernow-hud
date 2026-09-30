@@ -1,41 +1,54 @@
-import { createRequire } from 'module';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-const { recommend } = require('../src/poker/advice.js');
-
-const T = { canCheck: false, canCall: true, canRaise: true };
-const cases = [
-  ['clearly beaten, big bet',      0.15, { pot: 100, toCall: 100, ...T }, 'Fold'],
-  ['drawing, price too steep',     0.20, { pot: 100, toCall: 100, ...T }, 'Fold'],
-  ['drawing, cheap price',         0.30, { pot: 300, toCall: 50, ...T },  'Call'],
-  ['right on the pot-odds line',   0.335, { pot: 100, toCall: 50, ...T }, 'Call'],
-  ['strong hand facing a bet',     0.82, { pot: 100, toCall: 40, ...T },  'Raise'],
-  ['strong but no raise available',0.82, { pot: 100, toCall: 40, canCall: true }, 'Call'],
-  ['no bet, monster',              0.80, { pot: 100, toCall: 0, canCheck: true, canRaise: true }, 'Bet'],
-  ['no bet, medium',               0.50, { pot: 100, toCall: 0, canCheck: true, canRaise: true }, 'Check'],
-  ['no bet, weak',                 0.20, { pot: 100, toCall: 0, canCheck: true, canRaise: true }, 'Check'],
-  ['facing bet, pot unknown',      0.70, { pot: null, toCall: 50, ...T },  'Call'],
-  ['facing bet, pot unknown, weak',0.10, { pot: null, toCall: 50, ...T },  'Fold'],
-];
-
-let ok = true;
-for (const [name, eq, ctx, want] of cases) {
-  const r = recommend(eq, ctx);
-  const pass = r.action === want;
-  if (!pass) ok = false;
-  console.log((pass ? '  ok  ' : ' FAIL ') + name.padEnd(32)
-    + (r.action + ' — ' + r.detail).padEnd(38) + (pass ? '' : '(want ' + want + ')'));
+const { recommend, potOdds, sizing } = require('../src/poker/advice.js');
+const ctx = { pot: 150, toCall: 50, canCall: true, canRaise: true, canFold: true, yourTurn: true,
+  opponents: 1, board: [0, 1, 2, 3, 4], street: 'river', heroId: 'hero', ranges: [], events: [] };
+const result = equity => ({ equity, tie: 0, stderr: 0, continuing: null });
+assert.equal(potOdds(ctx), .25);
+for (const spot of [{ pot: null }, { pot: 0 }, { pot: 20 }, { sidePots: true }, { uncalledExcess: true }, { stack: 20 }]) assert.equal(potOdds({ ...ctx, ...spot }), null);
+assert.equal(recommend(result(.24), ctx).action, 'Fold');
+assert.equal(recommend(result(.26), ctx).action, 'Call');
+assert.equal(recommend(result(.9), ctx).action, 'Call', 'high random equity does not imply value raise');
+assert.equal(recommend(result(.32), { ...ctx, pot: 100 }).action, 'Fold', 'no tolerance permitting a known losing call');
+assert.equal(recommend({ ...result(.25), stderr: .01 }, ctx).action, 'Review');
+assert.equal(recommend(result(.5), { ...ctx, pot: null }).action, 'Review');
+assert.equal(recommend(result(.9), { ...ctx, canCheck: true, toCall: 0 }).action, 'Check');
+const check = recommend(result(.1), { ...ctx, canCheck: true, toCall: 0 });
+assert.equal(check.detail, '');
+assert.equal(check.lesson, '');
+assert.deepEqual(check.reasons, []);
+assert.equal(recommend(result(.9), { ...ctx, toCall: null }).action, 'Review');
+const value = recommend({ ...result(.8), continuing: result(.7) }, ctx);
+assert.equal(value.action, 'Raise');
+assert.equal(value.amount, 182);
+assert.equal(value.autoEligible, true);
+assert.equal(recommend({ ...result(.9), continuing: result(.2) }, ctx).action, 'Call');
+assert.equal(recommend({ ...result(.9), continuing: result(.8) }, { ...ctx, opponents: 2 }).action, 'Call');
+assert.equal(recommend({ ...result(.9), continuing: result(.8) }, { ...ctx, raiseMax: 100 }).action, 'Call');
+assert.equal(sizing(150, 50, 20), 202, 'raise-to includes hero chips already committed');
+assert.equal(recommend(result(.4), { ...ctx, street: 'flop', board: [0, 1, 2] }).ev, null);
+assert.equal(recommend(result(.4), { ...ctx, street: 'flop', board: [0, 1, 2] }).autoEligible, false);
+assert.equal(recommend(result(.4), { ...ctx, street: 'flop', closesAction: true }).ev, 30);
+assert.ok(Math.abs(recommend(result(1 / 3), ctx).ev - (200 / 3 - 50)) < 1e-10);
+assert.equal(recommend(result(.8), { ...ctx, practice: true }).autoEligible, false);
+for (const street of ['preflop', 'flop', 'turn', 'river']) {
+  for (const opponents of [1, 3]) {
+    const full = { ...ctx, street, opponents, autoMode: 'full' };
+    assert.equal(recommend(result(.4), full).autoEligible, true);
+    assert.equal(recommend(result(.1), full).action, 'Fold');
+    assert.equal(recommend(result(.1), full).autoEligible, true);
+    for (const invalid of [{ sidePots: true }, { pot: null }, { uncalledExcess: true }, { practice: true }, { yourTurn: false }]) {
+      assert.equal(recommend(result(.4), { ...full, ...invalid }).autoEligible, false);
+    }
+  }
 }
-
-// The pot-odds boundary must be monotone: more equity never turns Call into Fold.
-let prev = 0, monotone = true;
-const RANK = { Fold: 0, Check: 1, Call: 2, Bet: 3, Raise: 3 };
-for (let e = 0; e <= 1.0001; e += 0.01) {
-  const r = RANK[recommend(e, { pot: 100, toCall: 50, ...T }).action];
-  if (r < prev) monotone = false;
-  prev = r;
-}
-console.log((monotone ? '  ok  ' : ' FAIL ') + 'advice is monotone in equity');
-if (!monotone) ok = false;
-
-console.log('\n' + (ok ? 'advice: all cases pass' : 'advice: FAILURES'));
-process.exit(ok ? 0 : 1);
+assert.equal(recommend({ ...result(.251), stderr: .01 }, { ...ctx, autoMode: 'full' }).action, 'Call');
+assert.equal(recommend({ ...result(.249), stderr: .01 }, { ...ctx, autoMode: 'full' }).action, 'Fold');
+const observed = recommend(result(.4), { ...ctx, events: [{ playerId: 'alex', street: 'river', action: 'Bet', text: 'Alex bets 50' }],
+  ranges: [{ id: 'alex', name: 'Alex', text: '88,JT', reason: 'Selected by you' }] });
+assert.match(observed.facts[0], /Alex bets 50/);
+assert.match(observed.assumptions[0], /Selected by you/);
+assert.match(observed.lesson, /25.0% bluffs/);
+assert.ok(observed.alternatives.some(s => /25.0%/.test(s)));
+console.log('advice: price, EV, uncertainty, value ranges, legal amounts and lessons pass');

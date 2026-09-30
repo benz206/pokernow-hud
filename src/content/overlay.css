@@ -6,10 +6,11 @@
   right: 16px;
   font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: calc(12px * var(--pnhud-scale));
-  width: 19.4em;
+  width: 29em;
+  max-width: calc(100vw - 2em);
   line-height: 1.4;
   color: #e8ecf2;
-  background: rgba(14, 17, 23, 0.93);
+  background: rgba(15, 23, 35, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 0.85em;
   box-shadow: 0 0.6em 2.2em rgba(0, 0, 0, 0.55);
@@ -26,7 +27,7 @@
   display: flex;
   align-items: center;
   gap: 0.5em;
-  padding: 0.58em 0.75em;
+  padding: 0.8em 1em;
   cursor: grab;
   touch-action: none;
   background: rgba(255, 255, 255, 0.05);
@@ -41,13 +42,13 @@
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #8b96a8;
+  color: #b9c8dd;
 }
 
 .pnhud-btn {
   all: unset;
   cursor: pointer;
-  padding: 0.08em 0.42em;
+  padding: 0.35em 0.55em;
   border-radius: 0.34em;
   font-size: 0.92em;
   color: #8b96a8;
@@ -55,7 +56,7 @@
 
 .pnhud-btn:hover { background: rgba(255, 255, 255, 0.1); color: #e8ecf2; }
 
-.pnhud-body { padding: 0.75em; }
+.pnhud-body { padding: 1em; max-height: calc(100vh - 9em); overflow-y: auto; overscroll-behavior: contain; }
 
 .pnhud-cards {
   display: flex;
@@ -78,10 +79,10 @@
 .pnhud-card.red { color: #cf2438; }
 .pnhud-sep { color: #4c5666; font-size: 1.1em; padding: 0 0.08em; }
 
-.pnhud-equity { display: flex; align-items: baseline; gap: 0.5em; }
+.pnhud-equity { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5em; margin-top: 1em; }
 
 .pnhud-eqval {
-  font-size: 2.34em;
+  font-size: 1.5em;
   font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -90,9 +91,9 @@
 }
 
 .pnhud-eqlabel {
+  flex: 1;
+  min-width: 10em;
   font-size: 0.84em;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: #8b96a8;
 }
 
@@ -122,17 +123,16 @@
 }
 
 .pnhud-rec {
-  display: flex;
-  align-items: baseline;
+  display: block;
   gap: 0.55em;
-  padding: 0.5em 0.67em;
+  padding: 0.8em 1em;
   margin-bottom: 0.67em;
   border-radius: 0.5em;
   border: 1px solid transparent;
 }
 
 .pnhud-rec-action {
-  font-size: 1.17em;
+  font-size: 1.8em;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@
   flex: 1;
   font-size: 0.84em;
   color: #98a3b5;
-  text-align: right;
+  text-align: left;
 }
 
 .pnhud-rec.good { background: rgba(34, 197, 94, 0.14); border-color: rgba(74, 222, 128, 0.35); }
@@ -216,49 +216,24 @@
   padding: 0.42em 0.75em;
   font-size: 0.84em;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: #11141a;
   background: #fbbf24;
 }
 
 .pnhud.pnhud-auto .pnhud-autobar { display: flex; }
 
-.pnhud-autodot {
-  width: 0.5em;
-  height: 0.5em;
-  border-radius: 50%;
-  background: #11141a;
-  animation: pnhud-pulse 1.1s ease-in-out infinite;
-}
-
-@keyframes pnhud-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-
-.pnhud-log { display: none; margin-top: 0.67em; padding-top: 0.67em; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.pnhud.pnhud-auto .pnhud-log { display: block; }
-
-.pnhud-log-title {
-  font-size: 0.75em;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: #6b7688;
-  margin-bottom: 0.35em;
-}
-
 .pnhud-log-row {
-  display: flex;
-  gap: 0.5em;
-  font-size: 0.8em;
-  padding: 0.15em 0;
+  display: block;
+  padding: .55em;
+  margin: .5em 0;
+  background: #192435;
+  border-radius: .4em;
   color: #98a3b5;
 }
 
 .pnhud-log-act { font-weight: 700; min-width: 3.4em; }
-.pnhud-log-act.good { color: #4ade80; }
-.pnhud-log-act.bad { color: #f87171; }
-.pnhud-log-act.neutral { color: #e8ecf2; }
-.pnhud-log-why { flex: 1; text-align: right; opacity: 0.8; }
-.pnhud-log-empty { font-size: 0.8em; color: #6b7688; }
+.pnhud-log-why { text-align: left; }
 
 .pnhud-suggest {
   outline: 0.16em solid #4ade80 !important;
@@ -266,3 +241,34 @@
   box-shadow: 0 0 0 0.33em rgba(74, 222, 128, 0.22) !important;
   border-radius: 0.34em !important;
 }
+
+/* Coaching content scrolls inside the panel and remains available between hands. */
+.pnhud [hidden] { display: none !important; }
+.pnhud-practice-label { display: flex; gap: .4em; align-items: center; margin-bottom: .8em; color: #b9c4d6; }
+.pnhud-context { color: #98a3b5; margin-bottom: .6em; text-transform: capitalize; }
+.pnhud-settings { padding: .8em; margin-bottom: 1em; border: 1px solid #334155; border-radius: .6em; background: #152135; }
+.pnhud-settings select { display: block; width: 100%; margin: .4em 0; }
+.pnhud-settings .pnhud-practice-label { margin-top: 1em; }
+.pnhud-coach { margin-top: .7em; }
+.pnhud-explanation { border-left: 2px solid #587a9e; padding-left: .8em; }
+.pnhud-coach p, .pnhud-journal p, .pnhud-ranges p { margin: .35em 0 .6em; }
+.pnhud-section-label { display: block; margin-top: .65em; color: #cdd9ee; }
+.pnhud-more, .pnhud-ranges, .pnhud-journal { margin-top: .8em; border-top: 1px solid #334155; padding-top: .7em; }
+.pnhud summary { cursor: pointer; color: #cdd9ee; }
+.pnhud-note { color: #a5b2c6; font-size: .92em; }
+.pnhud-control, .pnhud select, .pnhud input[type="text"] {
+  box-sizing: border-box; font: inherit; color: #e8ecf2; background: #1c293d;
+  border: 1px solid #52627b; border-radius: .35em; padding: .4em .55em;
+}
+.pnhud-control { cursor: pointer; margin: .25em .3em .25em 0; }
+.pnhud-control:hover { background: #2d4260; }
+.pnhud-control:disabled { opacity: .45; cursor: default; }
+.pnhud button:focus-visible, .pnhud input:focus-visible, .pnhud select:focus-visible, .pnhud summary:focus-visible { outline: .15em solid #93c5fd; outline-offset: .15em; }
+.pnhud-range { border-top: 1px solid #334155; padding: .7em 0; }
+.pnhud-range select, .pnhud-range input { width: 100%; margin: .35em 0; }
+.pnhud-field { display: block; margin-top: .4em; }
+.pnhud-error { color: #fca5a5; }
+.pnhud-guess p { color: #b9c4d6; }
+.pnhud-feedback { color: #93c5fd; margin: .5em 0; }
+.pnhud-blind .pnhud-answer { display: none !important; }
+.pnhud-hand-review { margin-top: .75em; }

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker coach — simulated table</title>
+<link rel="stylesheet" href="../src/content/overlay.css">
+<style>
+body { margin:0; background:#102b25; color:#effbf6; font:16px system-ui; padding:36px; }
+main { max-width: min(580px,calc(100vw - 440px)); }
+h1 { font-size:28px; margin-bottom:8px; } p { color:#b1cdc4; line-height:1.6; }
+.table { margin-top:38px; background:#184c3d; border:10px solid #293a37; border-radius:100px; padding:30px; }
+.table-player { margin:20px 0; } .table-player-name { font-weight:600; } a { color:inherit; }
+.card { display:inline-block; padding:9px; background:#fff8e9; color:#152922; border-radius:5px; margin:4px; min-width:20px; }
+.table-player-stack,.table-player-bet-value { display:inline; margin:8px; color:#a9c2b8; }
+.game-decisions-ctn { margin-top:24px; } main button { border:1px solid #629887; background:#235844; color:#fff; padding:10px 20px; margin:4px; border-radius:7px; }
+.raise-amount { width:90px; padding:10px; } .log-modal-entries { display:none; }
+@media(max-width:800px) { main {max-width:100%;} .table {margin-top:20px;} }
+</style>
+<main><h1>Learn the decision.</h1><p>Simulated table for testing the extension. These controls do not affect a real game.</p>
+<div class="table"><div class="table-player table-player-2" id="alex"><div class="card"></div><div class="card"></div><div class="table-player-name"><a href="/players/alex">Alex</a></div><div class="table-player-stack">450</div><div class="table-player-bet-value">50</div></div>
+<div class="table-cards"><div class="card">K♣</div><div class="card">8♦</div><div class="card">4♠</div><div class="card">2♥</div><div class="card">9♣</div></div>
+<p>Pot <span class="table-pot-size">150</span></p>
+<div class="table-player table-player-1 you-player decision-current" id="hero"><div class="card">K♠</div><div class="card">Q♥</div><div class="table-player-name"><a href="/players/hero">You</a></div><div class="table-player-stack">500</div><div class="table-player-bet-value">0</div></div>
+<div class="dealer-button-ctn dealer-position-1"></div></div>
+<div class="game-decisions-ctn"><button id="fold">Fold</button><button id="call">Call 50</button><button id="raise">Raise</button><input aria-label="Raise amount" class="raise-amount" type="number" min="100" max="500" value="100"></div>
+<p id="result">Alex bet 50 into 100 on the river. Use the coach to inspect the assumptions behind a call.</p>
+<button id="reset">Reset lesson</button></main>
+<div class="log-modal-entries">
+<div class="entry-ctn"><span class="at">12:30</span><p class="content"><abbr title="Player ID: alex">Alex</abbr> bets 50</p></div>
+<div class="entry-ctn"><p class="content">River: [K♣, 8♦, 4♠, 2♥, 9♣]</p></div>
+<div class="entry-ctn"><p class="content"><abbr title="Player ID: alex">Alex</abbr> checks</p></div>
+<div class="entry-ctn"><p class="content">Turn: [K♣, 8♦, 4♠, 2♥]</p></div>
+<div class="entry-ctn"><p class="content"><abbr title="Player ID: alex">Alex</abbr> checks</p></div>
+<div class="entry-ctn"><p class="content">Flop: [K♣, 8♦, 4♠]</p></div>
+<div class="entry-ctn"><p class="content"><abbr title="Player ID: alex">Alex</abbr> raises to 6</p></div>
+<div class="entry-ctn"><p class="content">Your hand is K♠, Q♥</p></div>
+<div class="entry-ctn start-game"><p class="content">-- starting hand #12 (id: demo) No Limit Texas Hold'em --</p></div>
+</div>
+<script src="../src/poker/evaluator.js"></script><script src="../src/poker/equity.js"></script>
+<script>
+const initial={pnhud:{ranges:{alex:{mode:'custom',text:'8c8h,TcJh:0.5',continuing:''}}}};
+const stored=JSON.parse(localStorage.getItem('poker-coach-demo')||'null')||initial;
+stored.pnhud.auto=false;
+window.chrome={runtime:{id:'local-demo',sendMessage:(msg,cb)=>setTimeout(()=>cb(PokerEquity.analyze(msg.payload)),0)},storage:{local:{get:(_,cb)=>cb(stored),set:v=>{Object.assign(stored,structuredClone(v));localStorage.setItem('poker-coach-demo',JSON.stringify(stored));}}}};
+for (const id of ['fold','call','raise']) document.getElementById(id).addEventListener('click',()=>{
+ document.getElementById('result').textContent='Simulated selection: '+id+'. Review the saved decision in the coach.';
+ if(id==='fold') document.getElementById('hero').classList.add('fold');
+ if(id==='call') document.querySelector('#hero .table-player-bet-value').textContent='50';
+ if(id==='raise') document.querySelector('#hero .table-player-bet-value').textContent=document.querySelector('.raise-amount').value;
+ document.querySelectorAll('.game-decisions-ctn button').forEach(b=>b.disabled=true);
+ document.getElementById('hero').classList.remove('decision-current');
+});
+document.getElementById('reset').onclick=()=>{localStorage.removeItem('poker-coach-demo');location.reload();};
+</script>
+<script src="../src/poker/ranges.js"></script><script src="../src/poker/history.js"></script><script src="../src/poker/advice.js"></script><script src="../src/content/parser.js"></script><script src="../src/content/overlay.js"></script><script src="../src/content/index.js"></script></html>

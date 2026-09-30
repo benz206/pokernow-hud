@@ -20,7 +20,7 @@ window.chrome = {
   storage: { local: { get: (_k, cb) => cb(stored), set: (v) => Object.assign(stored, v) } },
   runtime: { id: 'test-extension', lastError: undefined, sendMessage: (m, cb) => cb(Equity.analyze(m.payload)) },
 };
-for (const f of ['../src/poker/advice.js', '../src/content/parser.js',
+for (const f of ['../src/poker/ranges.js', '../src/poker/history.js', '../src/poker/advice.js', '../src/content/parser.js',
                  '../src/content/overlay.js', '../src/content/index.js']) window.eval(read(f));
 
 await new Promise((r) => setTimeout(r, 400));

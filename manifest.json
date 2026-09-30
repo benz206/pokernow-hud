@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "PokerNow HUD",
-  "version": "1.0.0",
-  "description": "Live equity, outs and pot odds shown directly on the PokerNow table.",
+  "name": "PokerNow Coach",
+  "version": "1.1.0",
+  "description": "PokerNow coaching: explain actions, inspect range assumptions, and review your decisions.",
   "permissions": [
     "storage"
   ],
@@ -18,6 +18,8 @@
         "https://pokernow.com/*"
       ],
       "js": [
+        "src/poker/ranges.js",
+        "src/poker/history.js",
         "src/poker/advice.js",
         "src/content/parser.js",
         "src/content/overlay.js",

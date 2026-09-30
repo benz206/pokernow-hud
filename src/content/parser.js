@@ -77,6 +77,7 @@
 
   function cardEls(scope) {
     return Array.from(scope.querySelectorAll('.card, [class*="card-"], [class*="Card"]'))
+      .filter((el) => !el.closest('.pnhud, .log-modal'))
       .filter((el) => !el.querySelector('.card, [class*="card-"], [class*="Card"]'));
   }
 
@@ -248,10 +249,16 @@
     for (const sel of POT_CONTAINER_SELECTORS) {
       for (const el of document.querySelectorAll(sel)) {
         if (el.closest('.pnhud')) continue;
+        const total = el.querySelector('.add-on');
+        const totalLabel = total && total.querySelector('small');
+        if (total && /\btotal\b/i.test(totalLabel ? totalLabel.textContent : total.textContent)) {
+          const nums = numbersInTree(total);
+          if (nums.length) return { value: nums[nums.length - 1], source: 'labelled total' };
+        }
         const nums = numbersInTree(el);
         if (!nums.length) continue;
-        const total = nums.reduce((a, b) => a + b, 0);
-        if (total > 0) return { value: total, source: sel };
+        const sum = nums.reduce((a, b) => a + b, 0);
+        if (sum > 0) return { value: sum, source: sel };
         // Container says zero -- the chips may still be sitting in front of players.
         const bets = sumBets();
         if (bets.value) return { value: bets.value, source: bets.source + ' (pot read 0)' };
@@ -285,6 +292,15 @@
     return /\b(disabled|inactive|is-disabled|not-allowed)\b/i.test(String(raw || ''));
   }
 
+  function isHidden(el) {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      if (node.hidden || node.getAttribute('aria-hidden') === 'true') return true;
+      const style = window.getComputedStyle(node);
+      if (style.display === 'none' || style.visibility === 'hidden') return true;
+    }
+    return false;
+  }
+
   // A compound label ("Check/Fold") or a blanket one ("Call Any") is a standing
   // instruction, not the action for this decision.
   function classifyAction(text) {
@@ -293,14 +309,15 @@
     if (/^fold$/i.test(t)) return 'fold';
     if (/^check$/i.test(t)) return 'check';
     if (/^call\b/i.test(t)) return 'call';
-    if (/^(raise|bet|all[-\s]?in)\b/i.test(t)) return 'raise';
+    if (/^all[-\s]?in\b/i.test(t)) return 'allin';
+    if (/^(raise|bet)\b/i.test(t)) return 'raise';
     return null;
   }
 
   function actionButtons() {
-    const out = { fold: null, check: null, call: null, raise: null };
+    const out = { fold: null, check: null, call: null, raise: null, allin: null };
     for (const b of document.querySelectorAll('button, [class*="action-button"], [role="button"]')) {
-      if (b.closest('.pnhud') || looksDisabled(b) || inPreActionArea(b)) continue;
+      if (b.closest('.pnhud, .log-modal') || looksDisabled(b) || isHidden(b) || inPreActionArea(b)) continue;
       const kind = classifyAction(b.textContent);
       if (kind && !out[kind]) out[kind] = b;
     }
@@ -337,6 +354,8 @@
       canCheck: !!b.check,
       canCall: !!b.call,
       canRaise: !!b.raise,
+      canFold: !!b.fold,
+      canAllIn: !!b.allin,
       toCall: b.call ? parseAmount(b.call.textContent) : null,
     };
   }
@@ -346,7 +365,7 @@
     let best = null;
     let bestScore = 0;
     for (const el of document.querySelectorAll('input')) {
-      if (el.closest('.pnhud') || el.disabled || el.readOnly) continue;
+      if (el.closest('.pnhud, .log-modal') || el.disabled || el.readOnly || isHidden(el) || inPreActionArea(el)) continue;
       const type = String(el.type || 'text').toLowerCase();
       if (type !== 'number' && type !== 'text' && type !== 'tel' && type !== 'range') continue;
 
@@ -358,6 +377,7 @@
 
       let score = 0;
       if (/raise|bet|amount|wager|stake/.test(context)) score += 3;
+      if (!/raise|bet|amount|wager|stake/.test(context)) continue;
       if (type === 'number' || type === 'range') score += 2;
       if (el.hasAttribute('min') || el.hasAttribute('max')) score += 1;
       if (/^\s*-?\d+(\.\d+)?\s*$/.test(String(el.value || ''))) score += 2;
@@ -397,7 +417,12 @@
     const opponents = opponentCount();
     const act = actions();
     const toAct = heroToAct();
-    const live = act.canCheck || act.canCall || act.canRaise;
+    const live = act.canCheck || act.canCall || act.canRaise || act.canAllIn;
+    const players = playerDetails();
+    const hero = players.find(p => p.hero);
+    const others = players.filter(p => !p.hero && p.inHand && !p.folded);
+    const input = raiseInput();
+    const bounds = input ? inputBounds(input) : { min: null, max: null };
     return {
       hole,
       board: filtered,
@@ -408,10 +433,77 @@
       canCheck: act.canCheck,
       canCall: act.canCall,
       canRaise: act.canRaise,
+      canFold: act.canFold,
+      canAllIn: act.canAllIn,
+      players,
+      heroId: hero ? hero.id : null,
+      heroBet: hero ? hero.bet : null,
+      stack: hero ? hero.stack : null,
+      position: hero ? hero.position : null,
+      effectiveStack: hero && hero.stack !== null && others.length && others.every(p => p.stack !== null)
+        ? Math.min(hero.stack, Math.max(...others.map(p => p.stack))) : null,
+      closesAction: others.length === 1 && others[0].allIn,
+      uncalledExcess: !!(hero && hero.stack !== null && others.length === 1 && others[0].bet > hero.bet + hero.stack),
+      sidePots: !!document.querySelector('.table-pot-size [class*="side-pot"], .side-pot'),
+      raiseMin: bounds.min,
+      raiseMax: bounds.max,
+      log: logEntries(),
+      dealer: dealerSeat(),
+      street: filtered.length === 0 ? 'preflop' : filtered.length === 3 ? 'flop' : filtered.length === 4 ? 'turn' : filtered.length === 5 ? 'river' : 'dealing',
       toAct,
       yourTurn: toAct === null ? live : (toAct && live),
       key: hole.join(',') + '|' + filtered.join(',') + '|' + opponents,
     };
+  }
+
+  function dealerSeat() {
+    const el = document.querySelector('[class*="dealer-position-"]');
+    if (el && el.querySelector('.dead-button')) return null;
+    const match = el && String(el.className).match(/dealer-position-(\d+)/);
+    return match ? Number(match[1]) : null;
+  }
+
+  function playerDetails() {
+    const hero = firstMatch(HERO_SELECTORS);
+    const players = seats().map((seat, i) => {
+      const name = seat.querySelector('.table-player-name, [class*="player-name"]');
+      const link = name && name.querySelector('a[href*="/players/"]');
+      const seatMatch = String(seat.className).match(/\btable-player-(\d+)\b/);
+      const number = seatMatch ? Number(seatMatch[1]) : i + 1;
+      const stack = seat.querySelector('.table-player-stack');
+      const bet = seat.querySelector('.table-player-bet-value, [class*="bet-value"]');
+      const status = seat.querySelector('.table-player-status, [class*="player-action"]');
+      return { id: link ? link.getAttribute('href').split('/players/')[1].split(/[?#]/)[0] : 'seat:' + number,
+        name: name ? name.textContent.trim() : seat === hero ? 'You' : 'Seat ' + number,
+        seat: number, hero: seat === hero, folded: isFolded(seat), inHand: cardEls(seat).length >= 2,
+        stack: stack ? (/all\s*in/i.test(stack.textContent) ? 0 : parseAmount(stack.textContent)) : null,
+        allIn: !!(stack && /all\s*in/i.test(stack.textContent)) || /\ball-in\b/i.test(seat.className),
+        bet: bet ? parseAmount(bet.textContent) : 0, status: status ? status.textContent.trim() : '', position: null };
+    });
+    const dealer = dealerSeat();
+    if (dealer !== null && players.length >= 2) {
+      const ordered = players.slice().sort((a, b) => ((a.seat - dealer + 10) % 10) - ((b.seat - dealer + 10) % 10));
+      // A dead/empty button needs blind history; do not invent positions from it.
+      if (ordered[0].seat === dealer) ordered.forEach((p, i) => {
+        p.position = ordered.length === 2 ? (i === 0 ? 'BTN/SB' : 'BB')
+          : i === 0 ? 'BTN' : i === 1 ? 'SB' : i === 2 ? 'BB'
+            : i === ordered.length - 1 ? 'CO' : i === ordered.length - 2 && i > 3 ? 'HJ'
+              : i === 3 ? 'UTG' : 'UTG+' + (i - 3);
+      });
+    }
+    return players;
+  }
+
+  function logEntries() {
+    // PokerNow's Full Log is newest first. Read only the public DOM, never app state.
+    return Array.from(document.querySelectorAll('.log-modal-entries .entry-ctn')).reverse().map(el => {
+      const content = el.querySelector('.content');
+      const people = content ? Array.from(content.querySelectorAll('abbr[title]')).map(p => ({
+        id: p.title.replace(/^Player ID:\s*/, ''), name: p.textContent.trim(),
+      })) : [];
+      return { text: content ? content.textContent.trim() : '', people,
+        at: (el.querySelector('.at') || {}).textContent || '' };
+    });
   }
 
   function cardToString(c) {

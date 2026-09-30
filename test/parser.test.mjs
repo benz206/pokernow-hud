@@ -37,15 +37,18 @@ for (const [name, got, want] of checks) {
 }
 
 const r = Q.analyze({ hole: snap.hole, board: snap.board, opponents: snap.opponents });
-console.log('\n  equity vs 2 opponents:', ((r.win + r.tie) * 100).toFixed(1) + '%');
+console.log('\n  equity vs 2 opponents:', (r.equity * 100).toFixed(1) + '%');
 console.log('  made hand:            ', r.handName);
-console.log('  outs:                 ', r.outs.count, '->', r.outs.cards.join(' '));
+console.log('  draw cards:                 ', r.draws.count, '->', r.draws.cards.join(' '));
 console.log('  compute time:         ', r.ms + 'ms');
 console.log('  pot odds needed:      ', ((snap.toCall / (snap.pot + snap.toCall)) * 100).toFixed(1) + '%');
 
 // AhKh on Th Jh 2s: royal/flush/straight draws. Sanity: must be a big favourite.
-const eq = r.win + r.tie;
+const eq = r.equity;
 if (eq < 0.6 || eq > 0.85) { ok = false; console.log('\n FAIL equity out of sane range for a monster draw'); }
 if (r.handName !== 'A-high') { ok = false; console.log('\n FAIL expected A-high made hand, got ' + r.handName); }
 
 console.log('\n' + (ok ? 'parser + integration: all checks pass' : 'parser + integration: FAILURES'));
+
+if (!ok) process.exitCode = 1;
+dom.window.close();

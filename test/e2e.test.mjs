@@ -31,7 +31,7 @@ const style = window.document.createElement('style');
 style.textContent = read('../src/content/overlay.css');
 window.document.head.appendChild(style);
 
-for (const f of ['../src/poker/advice.js', '../src/content/parser.js', '../src/content/overlay.js', '../src/content/index.js']) {
+for (const f of ['../src/poker/ranges.js', '../src/poker/history.js', '../src/poker/advice.js', '../src/content/parser.js', '../src/content/overlay.js', '../src/content/index.js']) {
   window.eval(read(f));
 }
 
@@ -42,7 +42,7 @@ const text = (sel) => { const n = hud && hud.querySelector(sel); return n ? n.te
 
 const rows = {};
 for (const r of hud ? hud.querySelectorAll('.pnhud-row') : []) {
-  if (r.style.display === 'none') continue;
+  if (r.hidden) continue;
   rows[r.querySelector('.pnhud-k').textContent] = r.querySelector('.pnhud-v').textContent;
 }
 
@@ -64,9 +64,10 @@ add('pot-odds marker positioned at 20%',
   hud && parseFloat(hud.querySelector('.pnhud-bar-mark').style.left) === 20,
   hud && hud.querySelector('.pnhud-bar-mark').style.left);
 add('Hand row', rows.Hand === 'A-high', rows.Hand);
-add('Outs row', rows.Outs === '18 cards', rows.Outs);
+add('Draw completion row', rows['Draw cards'] === '12 completion cards', rows['Draw cards']);
 add('Pot odds row (60 to call into 240)', rows['Pot odds'] === 'need 20.0%', rows['Pot odds']);
-add('Call EV row is positive', /^\+/.test(rows['Call EV'] || ''), rows['Call EV']);
+add('Equity margin uses percentage points', /^\+.* pp$/.test(rows['Equity margin'] || ''), rows['Equity margin']);
+add('Flop does not claim realized Call EV', rows['Call EV (model)'] === undefined, rows['Call EV (model)']);
 add('recommendation banner shown', !!hud.querySelector('.pnhud-rec-action'),
   text('.pnhud-rec-action') + ' / ' + text('.pnhud-rec-detail'));
 add('recommends CALL when equity beats pot odds', text('.pnhud-rec-action') === 'Call',
@@ -98,7 +99,7 @@ add('HUD refreshes despite constant DOM churn',
 add('equity updates after hitting the royal flush',
   parseFloat(text('.pnhud-eqval')) > 99,
   text('.pnhud-eqval'));
-add('recommendation upgrades to RAISE with the nuts', text('.pnhud-rec-action') === 'Raise 258',
+add('no value raise without a continuing range', text('.pnhud-rec-action') === 'Call',
   text('.pnhud-rec-action') + ' / ' + text('.pnhud-rec-detail'));
 
 // Scaling: every size inside the panel must be relative, or resizing breaks.

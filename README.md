@@ -1,141 +1,183 @@
-# PokerNow HUD
+# PokerNow Coach
 
-A Chrome extension that shows live poker odds **directly on the PokerNow table** —
-no popup, no clicking. A small draggable panel updates itself as cards are dealt.
+A Chrome extension that explains decisions on a PokerNow Hold’em table. The panel
+connects observed actions to explicit assumptions, shows the arithmetic, and saves
+your own decisions for review.
 
-## What it shows
+## Learn a decision
 
-| Stat | Meaning |
+The panel separates:
+
+- **Observed:** the player’s action, your position and effective remaining stack
+  when readable. Table-inferred actions are labelled as inferred.
+- **Because:** why that action or call price affects the recommendation.
+- **Assumptions:** the opponent ranges used in the calculation, including why an
+  example range was selected. These are teaching models, not solver charts or
+  claims that we know someone’s cards or playing style.
+- **Alternatives:** what would change the answer, and the difference between
+  betting for value and bluffing.
+
+For example, paying 50 into a pot of 150 requires 25% equity. A river call with
+33.3% equity against your assumed betting range has about +16.7 chips of EV,
+assuming no rake or further betting. If a different assumed range lowers your
+equity below 25%, the recommendation changes to Fold.
+
+In **Settings (⚙)**, **Choose first, then reveal the lesson** hides the recommendation, equity and table
+highlight. Choose a practice action inside the panel to reveal the explanation;
+these buttons never play an action at the table. Making your own actual table
+choice also records that choice. A new decision hides the answer again.
+
+## Opponent assumptions
+
+Open **Opponent assumptions** to inspect or change each active player’s range.
+The default uses observed preflop aggression and readable position to select an
+explicit opening or re-raise example. With no observed raise, it uses random hands.
+It retains that starting range on later streets; it does not pretend to infer
+postflop bluff frequencies from a single bet.
+
+Select **Custom range** for hands such as:
+
+```
+QQ+, AJs+, AKo, 8c8h, TcJh:0.5
+```
+
+- `QQ+`: QQ, KK and AA; `AJs+`: AJs, AQs and AKs.
+- `s` means suited, `o` means offsuit, and no suffix includes both.
+- `AsKd` is one exact combination. Ranks are written higher first for hand classes.
+- Weights are relative, greater than 0 and at most 1. A combination weighted 0.5
+  is half as likely as one weighted 1. The last occurrence wins on overlaps.
+- Known cards remove impossible combinations. An empty or conflicting range
+  produces an error instead of silently reverting to random hands.
+
+**Continues vs our raise** is an optional subset of that player’s range. In a
+heads-up pot, the coach checks equity against those assumed callers before offering
+a value bet or raise. It no longer treats high equity against random hands as
+proof that a value raise is good. Bet sizing is an example, not an optimized size.
+Ranges are editable assumptions saved locally; reset a player to the default
+selection when you want to stop using your custom read.
+
+## What the numbers mean
+
+| Number | Meaning |
 | --- | --- |
-| **Equity** | Your win + tie share vs the active opponents, by Monte Carlo simulation |
-| **Hand** | Your best five-card hand right now |
-| **Outs** | Cards that turn a currently-losing hand into a winning one |
-| **Pot** | Pot size read from the table (`not found` if it cannot be read) |
-| **Pot odds** | The equity you need to break even on the call |
-| **Call EV** | Your equity minus that break-even number (green = profitable call) |
-| **Recommended action** | Fold / Check / Call / Bet / Raise, from equity vs pot odds |
+| Showdown equity | Expected share of the pot after all remaining board cards, against the displayed ranges |
+| Tie | Probability of tying for the best hand; split-pot share is accounted for separately in equity |
+| Pot odds | Call amount divided by the pot after your call |
+| Equity margin | Showdown equity minus required equity, in percentage points |
+| Call EV (model) | Expected chips under the shown assumptions; shown on the river or a heads-up all-in call |
+| Draw cards | Unique one-card flush/straight completions, excluding improvements shared entirely by the board |
 
-The recommended button is outlined in green **on the table itself**, so you can act
-without reading the panel.
+Draw-completion probabilities describe seeing one of the listed cards, with known
+cards removed. They do not model opponents holding those cards, backdoor draws,
+higher made hands or opponents improving afterward. They are **not guaranteed
+winning outs**. The detail view distinguishes the next card from seeing both turn
+and river.
 
-The equity bar has a yellow marker at the pot-odds threshold, so a fill past the
-marker means calling is +EV.
+On early streets, showdown equity is only a baseline: a call may not buy all the
+remaining cards. The coach says this explicitly and does not present it as realized
+call EV. Close simulation results request review in Selective mode; Full Auto uses
+the estimated call/fold threshold and labels the uncertainty. Unknown/inconsistent pots,
+side pots and potentially uncalled excess also request review rather than
+manufacturing a price.
 
-**Opponents are counted automatically** — seats still holding cards, minus anyone
-folded or sitting out. The count drives the equity simulation and is shown in the
-footer; it is detected from the table, not editable.
+## Hand history and decision review
 
-**On the recommendation:** it is a chip-EV suggestion computed from raw equity and
-pot odds against *random* opponent hands. It knows nothing about position, opponent
-ranges, betting patterns, or implied odds, and it assumes every opponent plays to
-showdown. Treat it as a sanity check on your own read, not as a solver.
+The coach reads player identities, stacks, current commitments and the dealer
+marker from the visible table. When **Log / Ledger → Full Log** is open, it also
+reads PokerNow’s public log entries, including hand numbers, streets, bets, raises,
+calls, checks, folds, starting stacks and result events. It does not open the log
+for you or fetch hidden application state. Open it to supply the available hand
+sequence; revisit it if PokerNow’s log view is not updating.
 
-## Auto-play
+Without a full log, the coach records changes it can observe on the table and marks
+the history as partial. Simultaneous wager changes are labelled with unknown action
+order. It cannot reconstruct unseen checks or actions that occurred while the tab
+was closed. Dead-button positions remain unknown rather than being guessed.
 
-The **AUTO** button in the header lets the HUD take the recommended action for you.
-While it is on the panel gets an amber border and an "Auto-playing" bar, and every
-action it takes is listed in the panel with the reason.
+**Decision review** remains available when AUTO is off, after folding, and between
+hands. It records manual selections, automated selections and practice choices,
+along with the cards, price, ranges, explanation and action sequence known at that
+time. Later cards and edits do not rewrite an earlier lesson. A click is shown as a
+selection until a table update or log confirms it. Results appear separately in the
+hand timeline and do not grade a decision as good merely because it won.
 
-- It acts on a 0.7–1.9 s randomised delay, and re-checks that the spot has not
-  changed before committing
-- It acts **once per spot** — it cannot loop or double-act
-- Raises are sized to two-thirds of the pot as it would stand after calling, typed
-  into the raise box. It verifies the box actually holds that number before pressing
-  Raise; if the value will not stick it falls back to Call/Check and says so, so a
-  stale pre-filled amount can never commit your stack
-- **Escape** is a hard stop, as is toggling AUTO off
-- **It only acts on your turn.** Pre-action controls ("Fold", "Check/Fold",
-  "Call Any") are on screen while you wait and are never pressed; if the table
-  marks which seat is acting, that must be yours; and the turn is re-confirmed
-  again after the delay, immediately before it commits
-- **It knows when you have folded** and sits out the rest of the hand — both from
-  the seat being marked folded on the table and from having seen the Fold button
-  pressed, whether it pressed it or you did
+History is saved in `chrome.storage.local`, separately for each table path. The
+latest 50 hands and up to 200 decisions are retained (up to 50 decisions and 200
+events per hand), with older records pruned if the journal exceeds 4 MiB. There is
+no external analytics or AI service.
+If browser storage rejects a save, the panel reports it and retains the review in
+the current tab instead of claiming it was saved.
 
-This is a play-money tool for learning — PokerNow has no cashier and its chips cannot
-be cashed out. The decision log is the point: it shows the pot-odds reasoning behind
-every action so the arithmetic becomes intuition.
+## AUTO
 
-## Install
+Choose the mode in **Settings (⚙)**, then use the header button to start or stop:
 
-1. Open `chrome://extensions`
-2. Turn on **Developer mode** (top right)
-3. Click **Load unpacked** and select this folder
-4. Open a PokerNow table — the panel appears once you're dealt in
+- **Selective auto** takes free checks and heads-up river or all-in decisions.
+  Early-street and multiway decisions wait for your review.
+- **Full Auto** follows the model on every street, including multiway pots. Close
+  estimates call above the pot-odds threshold and fold at or below it. It still
+  pauses for invalid ranges, unreadable prices, side pots or missing legal controls.
 
-## Using it
+Full Auto uses the same showdown-equity baseline, not a model of future betting.
+Value bets and raises still require an explicit continuing range. The mode is
+saved locally. Choose-first mode disables automation; starting auto disables
+choose-first.
 
-- **Drag** the header to move it, **drag the bottom-right corner** to resize it
-  (0.7x–2.5x). Both are press-move-release drags, and both are remembered
-- **–** collapses the panel, **Alt+H** hides it entirely
-- **⌕** dumps parser diagnostics to the console
+The panel puts the action and short explanation first. Free checks have no routine
+lesson. Open **Numbers & deeper reasoning** for calculations and alternatives.
 
-## If something breaks
+- Escape stops AUTO immediately.
+- The turn, legal controls, cards, pot, call amount, stacks, limits and range
+  assumptions are checked again before acting.
+- A changed decision replaces the pending action and its amount.
+- All-in controls are separate from ordinary raise controls and are never used as
+  a substitute for Raise.
+- Raises include your existing street commitment in the target total. The amount
+  must stick after the table’s input handler renders; otherwise it falls back to
+  Call/Check and records why.
+- A pre-action Fold is not treated as a completed fold.
+- Only one selection is made per observed decision turn.
 
-The panel reports its own failures now: an error shows up in the panel text and is
-logged to the console tagged `[PokerNow HUD]`.
+## Install or update
 
-One message is worth knowing: **"Extension reloaded — refresh this page"**. Reloading
-the extension in `chrome://extensions` orphans the copy already running in your open
-tab, and every `chrome.*` call from it then fails with "Extension context
-invalidated". It shuts itself down cleanly and waits; just refresh the PokerNow tab.
+1. Open `chrome://extensions` and enable Developer mode.
+2. Load this folder with **Load unpacked**, or reload the existing extension.
+3. Refresh your PokerNow tab to load the new content scripts.
 
-## If the numbers stop appearing
+Drag the header to move the panel; drag its bottom-right corner to resize it.
+Collapse with **–** and hide with **Alt+H**. The journal and longer explanations
+scroll inside the panel. **Settings (⚙)** also contains parser diagnostics.
 
-PokerNow can change its markup at any time, which is the one fragile part of any
-scraper like this. The parser tries several selector strategies and falls back to
-scanning for card-shaped elements, but if it still comes up empty:
+After reloading the extension, an old tab displays “Extension reloaded — refresh
+this page” and stops taking actions. Refresh that tab.
 
-Click **⌕** on the panel. It copies a JSON dump to your clipboard containing the
-matched selectors, what it parsed, a survey of the actual class names on the page,
-and sample card HTML — everything needed to repoint the selector lists at the top of
-`src/content/parser.js`. (It also logs to the console; the panel itself will say
-"Cards on table but unreadable" when this is the problem.)
-
-## Architecture
-
-```
-manifest.json              MV3 manifest
-src/poker/evaluator.js     7-card hand evaluator -> comparable integer score
-src/poker/equity.js        Monte Carlo equity + conditional outs
-src/poker/advice.js        Equity + pot odds -> recommended action and raise size
-src/background/index.js    Service worker; runs simulations off the page's thread
-src/content/parser.js      Scrapes cards, opponents, pot and call amount
-src/content/overlay.js     The panel UI
-src/content/index.js       Observes the table, throttles, requests, renders
-```
-
-Simulation runs in the extension service worker, so the poker table's own UI never
-janks. A full analysis takes 6–26 ms.
-
-## Tests
+## Development and verification
 
 ```
-npm install    # jsdom, for the DOM tests only
+npm install
 npm test
 ```
 
-- `crosscheck.mjs` — the fast evaluator vs an independent naive implementation over
-  400k random 7-card hands, plus category frequencies against published 7-card odds
-- `exact.mjs` — exhaustive enumeration of all 1,712,304 boards for known matchups
-  (AA vs KK reproduces the published 82.36% / 0.54% exactly)
-- `advice.test.mjs` — the recommendation across pot-odds boundaries, including a
-  check that advice is monotone in equity
-- `variants.test.mjs` — the scraper against seven plausible card layouts and eight
-  opponent-counting scenarios
-- `interaction.test.mjs` — drag and resize, including that the panel stops moving on
-  release and survives a pointer released off-window or cancelled mid-drag
-- `autoplay.test.mjs` — that auto-play clicks nothing while off, sizes and commits a
-  raise while on, acts exactly once per spot, refuses to raise when the amount will
-  not stick, never types into the chat box, and stops dead on Escape
-- `state.test.mjs` — pot reading (main value plus add-on, side pots, comma
-  grouping, chips still in front of players, genuinely empty vs not found) and
-  fold detection
-- `parser.test.mjs` — the scraper against a PokerNow-shaped DOM fixture
-- `e2e.test.mjs` — the whole content script in jsdom, including a regression test
-  that the HUD keeps refreshing under constant DOM animation
+The suite includes an independent 400,000-hand evaluator cross-check, five exhaustive
+known matchups, production sampler checks against exact probabilities, weighted
+ranges and blockers, split pots, draw completions, advice boundaries, full hand
+sequences, persistence, choose-first behavior, parser layouts and action regressions.
+Evaluator mismatches now fail the test process.
 
-## Note
+For a browser preview, serve the repository locally and open
+`test/coach-fixture.html`. It is a clearly marked simulated table using the actual
+content scripts and equity engine; no buttons affect a real PokerNow game.
 
-Real-time assistance is against the rules of most online poker sites. PokerNow is
-mainly used for private home games — check with your table before running this.
+```
+python3 -m http.server 8765 --bind 127.0.0.1
+# Open http://127.0.0.1:8765/test/coach-fixture.html
+```
+
+The simulation runs in the extension service worker. `parser.js` reads table/log
+markup; `history.js` maintains hands and decision snapshots; `ranges.js` expands
+editable models; `advice.js` owns the shared call-price math and lessons;
+`overlay.js` presents them; `index.js` coordinates updates, storage and actions.
+
+PokerNow markup can change. Unknown observations remain unknown, and incomplete
+history is shown explicitly. This is a model-based learning aid, not a solver.
+Check that assistance is permitted at your table.
